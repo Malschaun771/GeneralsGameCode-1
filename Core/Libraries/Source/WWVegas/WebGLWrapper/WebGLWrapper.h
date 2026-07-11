@@ -21,8 +21,7 @@
 #include "texture.h"
 #include "vertmaterial.h"
 #include "light.h"
-#include "texturebase.h"
-#include "renderdevicedesc.h"
+#include "rddesc.h"
 #include <cstdint>
 
 // --- Plattformneutrale Stubs fuer ehemals DX8-spezifische Typen ---------------
