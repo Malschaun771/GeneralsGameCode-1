@@ -7,7 +7,7 @@
     html,body{margin:0;height:100%;background:#0a0a12;overflow:hidden;}
     #wrap{display:flex;align-items:center;justify-content:center;height:100%;}
     canvas{width:80vw;height:80vh;background:#000;border:1px solid #333;}
-    #status{position:fixed;top:8px;left:8px;color:#7cf;font:13px monospace;}
+    #status{position:fixed;top:8px;left:8px;color:#7cf;font:13px monospace;white-space:pre-wrap;max-width:90vw;}
   </style>
 </head>
 <body>
@@ -16,14 +16,21 @@
     <canvas id="canvas" width="800" height="600"></canvas>
   </div>
   <script>
+    var out = "";
     var Module = {
-      canvas: document.getElementById('canvas'),
+      canvas: "canvas",   // Canvas-ID als String (nicht Element) -> Emscripten kompatibel
+      print: function(t){ out += t + "\n"; document.getElementById('status').textContent = out; },
+      printErr: function(t){ out += "ERR: " + t + "\n"; document.getElementById('status').textContent = out; },
       onRuntimeInitialized: function() {
-        document.getElementById('status').textContent = "WASM bereit — zeichne Dreieck…";
-        Module.ccall('run_render_proof', null, [], []);
-        document.getElementById('status').textContent = "✓ Dreieck gerendert (WebGL2 / WASM)";
+        try {
+          Module.ccall('run_render_proof', null, [], []);
+          out += "✓ run_render_proof aufgerufen\n";
+        } catch(e) {
+          out += "EXCEPTION: " + e + "\n";
+        }
+        document.getElementById('status').textContent = out;
       },
-      onAbort: function(e){ document.getElementById('status').textContent = "Fehler: " + e; }
+      onAbort: function(e){ out += "ABORT: " + e + "\n"; document.getElementById('status').textContent = out; }
     };
   </script>
   <script src="zh_webproof.js"></script>
