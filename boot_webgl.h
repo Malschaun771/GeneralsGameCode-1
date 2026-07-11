@@ -1,61 +1,43 @@
-// WebGLWrapper.h — DX8Wrapper-kompatible Fassade fuer den ZH-WebGL-Port.
-// Spiegelt die oeffentlichen DX8Wrapper-Methoden (exakte Signaturen), damit
-// spaetere WW3D2/W3DDevice-Aufrufe linken. Kern-Render-Pfade sind funktional,
-// der Rest sind no-ops (Boot-Harness / schrittweise Portierung).
+// boot_webgl.h — schlanke WebGLWrapper-Fassade fuer den Boot-Harness.
+// Self-contained (keine Projekt-Header), da der Build sonst das volle
+// WW3D2-Header-Netz braucht. Spiegelt die Kern-DX8Wrapper-Signaturen,
+// die der Boot-Frame-Loop nutzt. (Der volle WebGLWrapper.h ist fuer den
+// spaeteren CMake-Emscripten-Build mit korrekten Include-Pfaden.)
 #pragma once
 #include <cstdint>
-#include "always.h"
-#include "matrix4.h"
-#include "matrix3d.h"
-#include "vector3.h"
-#include "ww3dformat.h"
-#include "refcount.h"
-#include "shader.h"
-#include "texture.h"
-#include "vertmaterial.h"
-#include "light.h"
-#include "rddesc.h"
 
-// --- Plattformneutrale Stubs fuer ehemals DX8-spezifische Typen ---------------
-struct WebGLTextureHandle;        // opaque: haelt GL-Texture-ID
-typedef void* WebGLSurfaceHandle;  // opaque: haelt GL-Framebuffer/RenderTarget (Pointer)
-typedef unsigned int WebGLShaderHandle;
-
-// WW3D_FORMAT_UNKNOWN ist ein Enum-Eintrag aus ww3dformat.h. Falls nicht
-// definiert, verwenden wir den default-konstruierten WW3DFormat-Wert.
+struct Vector3 { float X=0, Y=0, Z=0; Vector3()=default; Vector3(float x,float y,float z):X(x),Y(y),Z(z){} };
+struct Matrix3D { float m[12]={}; };
+struct Matrix4x4 { float m[16]={}; };
+struct Vector4 { float X=0,Y=0,Z=0,W=0; };
+struct RenderStateStruct {};
+class VertexBufferClass {};
+class IndexBufferClass {};
+class ShaderClass {};
+class VertexMaterialClass {};
+class LightClass {};
+class LightEnvironmentClass {};
+class TextureBaseClass {};
+class TextureClass {};
+class RenderDeviceDescClass {};
+// WW3D_FORMAT_UNKNOWN als Default-Wert (im echten Build aus ww3dformat.h)
 #ifndef WW3D_FORMAT_UNKNOWN
 #define WW3D_FORMAT_UNKNOWN 0
 #endif
 
-class VertexBufferClass;
-class IndexBufferClass;
-class ShaderClass;
-class VertexMaterialClass;
-class LightClass;
-class LightEnvironmentClass;
-class TextureBaseClass;
-class TextureClass;
-class RenderDeviceDescClass;
-struct RenderStateStruct;
-
 class WebGLWrapper {
 public:
-    // Device lifecycle
     static bool Init(void* hwnd, bool lite = false);
     static void Shutdown();
     static bool Is_Initted() { return s_initted; }
     static bool Is_Device_Lost() { return false; }
     static void Do_Onetime_Device_Dependent_Inits() {}
     static void Do_Onetime_Device_Dependent_Shutdowns() {}
-
-    // Scene / frame
     static void Begin_Scene();
     static void End_Scene(bool flip_frame = true);
     static void Flip_To_Primary() {}
     static void Clear(bool clear_color, bool clear_z_stencil, const Vector3& color,
                       float dest_alpha = 0.0f, float z = 1.0f, unsigned int stencil = 0);
-
-    // Transforms
     static void Set_Transform(int transform, const Matrix4x4& m);
     static void Set_Transform(int transform, const Matrix3D& m);
     static void Get_Transform(int transform, Matrix4x4& m);
@@ -64,16 +46,12 @@ public:
     static bool Is_World_Identity() { return true; }
     static bool Is_View_Identity() { return true; }
     static void Set_Projection_Transform_With_Z_Bias(const Matrix4x4& m, float zn, float zf);
-
-    // Draw (die beiden zentralen Einstiegspunkte)
     static void Draw(unsigned primitive_type, unsigned short start_index,
                      unsigned short polygon_count, unsigned short min_vertex_index = 0,
                      unsigned short vertex_count = 0);
     static void Draw_Sorting_IB_VB(unsigned primitive_type, unsigned short start_index,
                                    unsigned short polygon_count, unsigned short min_vertex_index,
                                    unsigned short vertex_count);
-
-    // State (no-ops fuer Boot-Harness)
     static void Set_Render_State(const RenderStateStruct&) {}
     static void Get_Render_State(RenderStateStruct&) {}
     static void Release_Render_State() {}
@@ -93,31 +71,22 @@ public:
     static void Set_Fog(bool, const Vector3&, float, float) {}
     static void Set_Ambient(const Vector3&) {}
     static void Set_Gamma(float, float, float, bool = true, bool = true) {}
-
-    // Resources (no-ops)
     static TextureClass* Create_Render_Target(int, int, int = WW3D_FORMAT_UNKNOWN) { return nullptr; }
     static void Set_Render_Target(void* = nullptr, bool = false) {}
     static unsigned Get_Free_Texture_RAM() { return 0; }
     static void Flush_DX8_Resource_Manager(unsigned = 0) {}
-
-    // Device selection (no-ops)
     static bool Set_Render_Device(int = -1, int = -1, int = -1, int = -1, int = -1, bool = false) { return true; }
     static bool Set_Device_Resolution(int = -1, int = -1, int = -1, int = -1, bool = false) { return true; }
     static bool Toggle_Windowed() { return false; }
     static int  Get_Render_Device_Count() { return 1; }
     static int  Get_Render_Device() { return 0; }
     static bool Reset_Device(bool = true) { return true; }
-
-    // Statistics
     static unsigned long Get_FrameCount() { return s_frame; }
     static void Begin_Statistics() {}
     static void End_Statistics() {}
     static void Reset_Statistics() {}
-
-    // Color utils
     static unsigned int Convert_Color(const Vector3&, float = 1.0f) { return 0; }
     static unsigned int Convert_Color_Clamp(const Vector4&) { return 0; }
-
 private:
     static bool s_initted;
     static unsigned long s_frame;
