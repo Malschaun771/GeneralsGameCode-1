@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>ZH WebEdition (inoffiziell, GPLv3) — Render Proof</title>
+  <style> body{margin:0;background:#111;} canvas{display:block;width:100vw;height:100vh;} </style>
+</head>
+<body>
+  <canvas id="canvas" width="800" height="600"></canvas>
+  <script>
+    // Emscripten Module: Canvas verdrahten
+    var Module = {
+      canvas: document.getElementById('canvas'),
+      onRuntimeInitialized: function() {
+        // Nach Init: Clear + Draw aufrufen, um das Dreieck zu zeichnen.
+        Module.ccall('run_render_proof', null, [], []);
+      }
+    };
+  </script>
+  <script src="zh_webproof.js"></script>
+</body>
+</html>
