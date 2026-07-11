@@ -29,7 +29,7 @@
 // (Im WebGL-Build ersetzen wir die echten D3D-Typen durch leere/Wrapper-Strukturen,
 //  damit der uebrige Code unveraendert kompiliert.)
 struct WebGLTextureHandle;        // opaque: haelt GL-Texture-ID
-struct WebGLSurfaceHandle;        // opaque: haelt GL-Framebuffer/RenderTarget
+typedef void* WebGLSurfaceHandle;  // opaque: haelt GL-Framebuffer/RenderTarget (Pointer)
 typedef unsigned int WebGLShaderHandle;
 
 // WW3D_FORMAT_UNKNOWN ist ein Enum-Eintrag aus ww3dformat.h. Falls nicht
