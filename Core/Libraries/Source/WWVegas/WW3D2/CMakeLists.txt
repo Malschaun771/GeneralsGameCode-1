@@ -233,6 +233,32 @@ set(WW3D2_SRC
     ww3dtrig.h
 )
 
+# --- WebGL backend switch (ZH → WebGL/WASM port) ---
+# When USE_WEBGL is ON, replace the DX8 facade (dx8wrapper.cpp) with the
+# WebGLWrapper implementation. The 8 DX8 "bypass" files (dx8vertexbuffer,
+# dx8indexbuffer, dx8caps, dx8polygonrenderer, dx8renderer, dx8texman,
+# dx8webbrowser) still call DX8 directly and are excluded until they are
+# ported to WebGL (see WebGL_PORT_PLAN.md, tasks 12/13). This yields a
+# linkable WW3D2 core for the Emscripten build; full game rendering still
+# requires the remaining DX8 surfaces to be ported.
+if (USE_WEBGL)
+    message(STATUS "WebGL port: USE_WEBGL=ON — replacing dx8wrapper with WebGLWrapper")
+    list(REMOVE_ITEM WW3D2_SRC
+        dx8wrapper.cpp
+        dx8vertexbuffer.cpp
+        dx8indexbuffer.cpp
+        dx8caps.cpp
+        dx8polygonrenderer.cpp
+        dx8renderer.cpp
+        dx8texman.cpp
+        dx8webbrowser.cpp
+    )
+    list(APPEND WW3D2_SRC
+        webglwrapper.cpp
+    )
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../WebGLWrapper)
+endif()
+
 add_library(corei_ww3d2 INTERFACE)
 
 target_sources(corei_ww3d2 INTERFACE ${WW3D2_SRC})

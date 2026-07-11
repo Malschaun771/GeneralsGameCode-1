@@ -192,6 +192,23 @@
             "cacheVariables": {
                 "RTS_BUILD_OPTION_PROFILE": "ON"
             }
+        },
+        {
+            "name": "emscripten",
+            "displayName": "Emscripten WebAssembly (WebGL port)",
+            "generator": "Ninja",
+            "hidden": false,
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "toolchainFile": "${sourceDir}/cmake/toolchains/emscripten.cmake",
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "CMAKE_BUILD_TYPE": "Release",
+                "USE_WEBGL": "ON",
+                "VCPKG_MANIFEST_MODE": "OFF",
+                "RTS_BUILD_GENERALS": "OFF",
+                "RTS_BUILD_ZEROHOUR": "OFF",
+                "RTS_BUILD_CORE_TOOLS": "OFF"
+            }
         }
     ],
     "buildPresets": [
@@ -291,6 +308,12 @@
             "configurePreset": "mingw-w64-i686-profile",
             "displayName": "Build MinGW-w64 32-bit (i686) Profile",
             "description": "Build MinGW-w64 32-bit (i686) Profile"
+        },
+        {
+            "name": "emscripten",
+            "configurePreset": "emscripten",
+            "displayName": "Build Emscripten WebAssembly (WebGL port)",
+            "description": "Build Emscripten WebAssembly (WebGL port)"
         }
     ],
     "workflowPresets": [
@@ -486,6 +509,19 @@
                 {
                     "type": "build",
                     "name": "mingw-w64-i686-profile"
+                }
+            ]
+        },
+        {
+            "name": "emscripten",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "emscripten"
+                },
+                {
+                    "type": "build",
+                    "name": "emscripten"
                 }
             ]
         }
