@@ -14,19 +14,32 @@ bool Create_Context(const char* canvas_id)
 {
     if (s_ctx) return true;  // idempotent
 
+    if (!canvas_id) canvas_id = "canvas";
+
+    // Hinweis: Canvas ist garantiert im DOM (HTML vor <script>). Keine Wait-Loop
+    // in main() — emscripten_sleep vor Event-Loop-Start kann unter Emscripten haengen.
+
     EmscriptenWebGLContextAttributes attrs;
     emscripten_webgl_init_context_attributes(&attrs);
-    attrs.majorVersion = 2;
-    attrs.minorVersion = 0;
     attrs.alpha = false;
     attrs.depth = true;
     attrs.stencil = false;
     attrs.antialias = true;
     attrs.preserveDrawingBuffer = false;
 
+    printf("WebGLDevice: trying WebGL2...\n");
+    attrs.majorVersion = 2; attrs.minorVersion = 0;
     s_ctx = emscripten_webgl_create_context(canvas_id, &attrs);
+    if (s_ctx) {
+        printf("WebGLDevice: WebGL2 context ready\n");
+    } else {
+        printf("WebGLDevice: WebGL2 failed, trying WebGL1...\n");
+        attrs.majorVersion = 1; attrs.minorVersion = 0;
+        s_ctx = emscripten_webgl_create_context(canvas_id, &attrs);
+        if (s_ctx) printf("WebGLDevice: WebGL1 context ready\n");
+    }
     if (!s_ctx) {
-        printf("WebGLDevice: context creation failed for '%s'\n", canvas_id ? canvas_id : "(null)");
+        printf("WebGLDevice: context creation FAILED (weder WebGL2 noch WebGL1)\n");
         return false;
     }
     EMSCRIPTEN_RESULT r = emscripten_webgl_make_context_current(s_ctx);
@@ -34,7 +47,7 @@ bool Create_Context(const char* canvas_id)
         printf("WebGLDevice: make_context_current failed (%d)\n", (int)r);
         return false;
     }
-    printf("WebGLDevice: WebGL2 context ready (canvas='%s')\n", canvas_id ? canvas_id : "(null)");
+    printf("WebGLDevice: context current OK\n");
     return true;
 }
 

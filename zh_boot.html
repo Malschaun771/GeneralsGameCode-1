@@ -16,6 +16,14 @@
   <script>
     var out = "";
     function log(t){ out += t + "\n"; var s=document.getElementById('status'); if(s) s.textContent = out; }
+    window.addEventListener('error', function(e){
+      log("JS-ERROR: " + (e.message || e.error) + (e.filename ? " @ "+e.filename+":"+e.lineno : ""));
+    });
+    window.addEventListener('unhandledrejection', function(e){
+      log("PROMISE-REJECT: " + (e.reason && e.reason.message ? e.reason.message : e.reason));
+    });
+    // MODULARIZE=1: Module ist eine Factory. Dieses Config-Objekt wird von der
+    // Factory beim Laden verwendet. main() laeuft automatisch nach Init.
     var Module = {
       canvas: "canvas",
       print: function(t){ log(t); },

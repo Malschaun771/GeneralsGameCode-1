@@ -30,8 +30,14 @@ bool WebGLWrapper::Init(void* hwnd, bool lite)
 {
     if (!WebGLDevice::Create_Context("canvas")) return false;
     GLuint vs=mk(VERT,GL_VERTEX_SHADER), fs=mk(FRAG,GL_FRAGMENT_SHADER);
+    // Compile-Checks (stille Fehler vermeiden)
+    GLint ok=0;
+    glGetShaderiv(vs, GL_COMPILE_STATUS, &ok); if(!ok){ printf("WebGLWrapper: VS compile FAILED\n"); }
+    glGetShaderiv(fs, GL_COMPILE_STATUS, &ok); if(!ok){ printf("WebGLWrapper: FS compile FAILED\n"); }
     s_prog=glCreateProgram(); glAttachShader(s_prog,vs); glAttachShader(s_prog,fs);
-    glLinkProgram(s_prog); glUseProgram(s_prog);
+    glLinkProgram(s_prog);
+    glGetProgramiv(s_prog, GL_LINK_STATUS, &ok); if(!ok){ printf("WebGLWrapper: PROGRAM link FAILED\n"); }
+    glUseProgram(s_prog);
     float tri[6]={-0.5f,-0.5f, 0.5f,-0.5f, 0.0f,0.5f};
     glGenBuffers(1,&s_vbo); glBindBuffer(GL_ARRAY_BUFFER,s_vbo);
     glBufferData(GL_ARRAY_BUFFER,sizeof(tri),tri,GL_STATIC_DRAW);
@@ -95,6 +101,10 @@ void WebGLWrapper::Draw(unsigned primitive_type, unsigned short, unsigned short 
 {
     (void)primitive_type;
     if (polygon_count == 0) return;
+    // Robust: Viewport fuer das Canvas setzen (sonst 0x0 bei manchen Browsern).
+    glViewport(0, 0, 800, 600);
+    // Depth-Test aus, damit das Dreieck nicht durch die Depth-Mask versteckt wird.
+    glDisable(GL_DEPTH_TEST);
     glUseProgram(s_prog);
     glBindBuffer(GL_ARRAY_BUFFER, s_vbo);
     GLuint loc = glGetAttribLocation(s_prog, "a_pos");
