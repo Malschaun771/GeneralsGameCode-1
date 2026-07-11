@@ -14,21 +14,30 @@ Basis: EA-Quellcode (GPLv3) + TheSuperHackers/GeneralsGameCode (CMake, VS2022, C
   - `DX8Wrapper::Draw_Sorting_IB_VB(primitive_type, start_index, polygon_count, min_vertex_index, vertex_count)`
 - State wird über `RenderStateStruct` (World/View/Light/Texture/Shader/Material Changed-Flags) abgebildet.
 
-### Direkte DX8-Nutzung (Bypass-Gefahr) – 46 Dateien
-Am `DX8Wrapper` vorbei greifen u.a. direkt auf Direct3D zu:
-- `W3DShaderManager.cpp`  ← HÄRTESTE Stelle: DX8 Vertex/Pixel-Shader (müssen als WebGL-Programme neu geschrieben werden)
-- `W3DWater.cpp`, `W3DSnow.cpp`, `W3DTreeBuffer.cpp` (Wasser/Schnee/Bäume)
-- `texture.cpp`, `surfaceclass.cpp`, `texproject.cpp` (Texturen / Render-Targets)
-- `W3DProjectedShadow.cpp`, `W3DVolumetricShadow.cpp` (Schatten)
-- `assetmgr.cpp`, `ddsfile.cpp` (Asset/DDS-Textur-Laden)
+### Abhängigkeiten (Schritt 2 – präzisiert 2026-07-11)
+- `DX8Wrapper::` wird in **512 Stellen** aufgerufen — NICHT nur in der Game-Schicht,
+  sondern **innerhalb von `WW3D2` selbst** (der Core-Render-Bibliothek):
+  - `dx8wrapper.cpp`: 181 Calls (+ eigene D3D-Device-Erzeugung)
+  - `dx8renderer.cpp`: 39 Calls
+  - `sortingrenderer.cpp`: 34, `dynamesh.cpp`: 18, `seglinerenderer.cpp`: 17
+  - `pointgr.cpp`: 25, `texture.cpp`: 18, `textureloader.cpp`: 20, `sphereobj.cpp`: 12, ...
+- **Harte Kernstelle:** `dx8wrapper.cpp` lädt `d3d8.dll` per `LoadLibrary` +
+  `Direct3DCreate8` + `CreateDevice`. Das geht unter WASM **gar nicht** →
+  diese Funktion muss komplett durch WebGL-Context-Erzeugung ersetzt werden.
+- **Bypass (direkter DX8-Zugriff) in 8 Dateien** (nicht über die Fassade):
+  `dx8vertexbuffer.cpp`, `dx8indexbuffer.cpp`, `dx8caps.cpp`,
+  `dx8polygonrenderer.h`, `dx8renderer.h`, `dx8texman.h`, `dx8webbrowser.*`
+  → diese müssen auf WebGL-Buffer/State umgestellt werden.
+- **Härteste Logik-Stelle:** `W3DShaderManager.cpp` (GameEngineDevice) —
+  DX8 Vertex/Pixel-Shader → müssen als WebGL-Programme (GLSL) neu geschrieben werden.
 
-Die meisten dieser 46 Stellen nutzen DX8 nur für Textur-Erzeugung und Render-Targets →
-abfangbar über neue `WebGLTexture` / `WebGLSurface`-Klassen. Der echte harte Kern ist `W3DShaderManager`.
-
-### Build-Pipeline (TheSuperHackers)
-- CMake-Presets: `win32`, Linux via Docker.
-- vcpkg-Manifest (`vcpkg.json`) für Abhängigkeiten.
-- Cross-Compile nach WASM erfordert Emscripten (`emcc`) als Toolchain — eigener CMake-Preset nötig.
+### Build-Pipeline (Schritt 3 – präzisiert 2026-07-11)
+`CMakePresets.json` (version 6) bietet bereits:
+- `vc6`, `win32` (MSVC/Ninja), `unix` (vcpkg), **`mingw-w64-i686`** (MinGW! Unix Makefiles)
+- **KEIN Emscripten-Preset** → muss neu angelegt werden
+  (`toolchainFile: <emsdk>/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake`).
+- `mingw-w64-i686` beweist: Projekt kompiliert schon nicht-MSVC → Brücke zu Emscripten.
+- vcpkg (SDL etc.) muss unter Emscripten durch `emscripten-ports` ersetzt werden.
 
 ## Port-Strategie
 1. `WebGLWrapper` implementiert dieselbe ~80-Methoden-Schnittstelle wie `DX8Wrapper`.
