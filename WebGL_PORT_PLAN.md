@@ -50,3 +50,30 @@ Basis: EA-Quellcode (GPLv3) + TheSuperHackers/GeneralsGameCode (CMake, VS2022, C
 - Fork erlaubt, Modifikationen müssen als solche gekennzeichnet sein.
 - Keine EA-Marken: Projekt-Namen z.B. "Generals-ZH WebEdition (inoffiziell, GPLv3)".
 - Geänderter Quellcode bei Verbreitung offenzulegen.
+
+## Meilensteine / Status (Stand 2026-07-11)
+
+- [x] **M1 — Dreieck-Proof:** blaues Dreieck im Browser (emcc + eigene HTML, WebGL2). Visuell bestätigt.
+- [x] **M2 — Emscripten-Preset + USE_WEBGL-Schalter:** CMakePresets.json (emscripten),
+  cmake/toolchains/emscripten.cmake, WW3D2/CMakeLists.txt USE_WEBGL-Switch.
+- [x] **M3 — Task 12 (DX8-Device → WebGL):** webgl_device.{h,cpp} (Emscripten WebGL2-Context),
+  dx8wrapper.cpp DX8-Device-Kette unter #ifdef USE_WEBGL durch WebGLDevice ersetzt.
+- [x] **M4 — Boot-Harness:** Engine-Init → Endlos-Frame-Loop über WebGLWrapper-Fassade.
+  boot.cpp (main + emscripten_set_main_loop), boot_webgl.h (self-contained Fassade),
+  zh_boot.html/canvas + zh_boot.js/wasm. Build OK; Browser zeigte "RUNTIME READY" ->
+  "Init..." (voller Pfad bis WebGL-GPU-Bedarf). Visueller Render-Beweis (Dreieck+FPS)
+  nur auf echtem GPU-Browser, nicht im headless-Renderer.
+
+### Nächste Schritte (Tasks 7-13)
+- [ ] **Task 7:** Texturen — WW3DFormat → WebGL-Upload, Mipmaps.
+- [ ] **Task 8:** ShaderClass → WebGL-Programme (Vertex/Fragment GLSL).
+- [ ] **Task 9:** Vertex/Index-Buffer + Draw-Aufrufe an WebGL binden (echte Geometrie).
+- [ ] **Task 10:** Emscripten-Build des echten Spiels (.wasm + Canvas + Input/Touch).
+- [ ] **Task 12-Rest:** verbleibende DX8-Bypass-Dateien portieren.
+- [ ] **Task 13:** W3DShaderManager — DX8-Shader → GLSL-WebGL-Programme.
+
+### Wichtige Build-Lessons (Emscripten JS-Wrapping)
+- `MODULARIZE=0 -s EXPORT_NAME=Module`; `main()` auto-run (NICHT in EXPORTED_FUNCTIONS).
+- Frame-Loop via `emscripten_set_main_loop` aus C (nicht JS requestAnimationFrame).
+- `postRun` als "ready"-Callback (nicht onRuntimeInitialized).
+- Headless-Renderer hat kein WebGL → Init-Fail erwartet, kein Code-Bug.
