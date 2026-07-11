@@ -32,6 +32,12 @@ struct WebGLTextureHandle;        // opaque: haelt GL-Texture-ID
 struct WebGLSurfaceHandle;        // opaque: haelt GL-Framebuffer/RenderTarget
 typedef unsigned int WebGLShaderHandle;
 
+// WW3D_FORMAT_UNKNOWN ist ein Enum-Eintrag aus ww3dformat.h. Falls nicht
+// definiert, verwenden wir den default-konstruierten WW3DFormat-Wert.
+#ifndef WW3D_FORMAT_UNKNOWN
+#define WW3D_FORMAT_UNKNOWN WW3DFormat()
+#endif
+
 struct RenderStateStruct_WebGL {
     enum ChangedStates {
         WORLD_CHANGED     = 1 << 0,
