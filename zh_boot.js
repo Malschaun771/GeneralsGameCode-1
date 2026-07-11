@@ -1,15 +1,3 @@
-// This code implements the `-sMODULARIZE` settings by taking the generated
-// JS program code (INNER_JS_CODE) and wrapping it in a factory function.
-
-// Single threaded MINIMAL_RUNTIME programs do not need access to
-// document.currentScript, so a simple export declaration is enough.
-var Module = (() => {
-  // When MODULARIZE this JS may be executed later,
-  // after document.currentScript is gone, so we save it.
-  // In EXPORT_ES6 mode we can just use 'import.meta.url'.
-  var _scriptName = globalThis.document?.currentScript?.src;
-  return async function(moduleArg = {}) {
-    var Module = moduleArg;
 // include: shell.js
 // include: minimum_runtime_check.js
 (function() {
@@ -68,6 +56,7 @@ var Module = (() => {
 // after the generated code, you will need to define   var Module = {};
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
+var Module = typeof Module != 'undefined' ? Module : {};
 
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
@@ -89,6 +78,10 @@ var thisProgram = './this.program';
 var quit_ = (status, toThrow) => {
   throw toThrow;
 };
+
+// In MODULARIZE mode _scriptName needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
+// before the page load. In non-MODULARIZE modes generate it here.
+var _scriptName = globalThis.document?.currentScript?.src;
 
 if (typeof __filename != 'undefined') { // Node
   _scriptName = __filename;
@@ -141,6 +134,11 @@ readAsync = async (filename, binary = true) => {
   }
 
   programArgs = process.argv.slice(2);
+
+  // MODULARIZE will export the module in the proper place outside, we don't need to export here
+  if (typeof module != 'undefined') {
+    module['exports'] = Module;
+  }
 
   quit_ = (status, toThrow) => {
     process.exitCode = status;
@@ -405,7 +403,53 @@ function isExportedByForceFilesystem(name) {
          name === 'removeRunDependency';
 }
 
+/**
+ * Intercept access to a symbols in the global symbol.  This enables us to give
+ * informative warnings/errors when folks attempt to use symbols they did not
+ * include in their build, or no symbols that no longer exist.
+ *
+ * We don't define this in MODULARIZE mode since in that mode emscripten symbols
+ * are never placed in the global scope.
+ */
+function hookGlobalSymbolAccess(sym, func) {
+  if (!Object.getOwnPropertyDescriptor(globalThis, sym)) {
+    Object.defineProperty(globalThis, sym, {
+      configurable: true,
+      get() {
+        func();
+        return undefined;
+      }
+    });
+  }
+}
+
+function missingGlobal(sym, msg) {
+  hookGlobalSymbolAccess(sym, () => {
+    warnOnce(`\`${sym}\` is no longer defined by emscripten. ${msg}`);
+  });
+}
+
+missingGlobal('buffer', 'Please use HEAP8.buffer or wasmMemory.buffer');
+missingGlobal('asm', 'Please use wasmExports instead');
+
 function missingLibrarySymbol(sym) {
+  hookGlobalSymbolAccess(sym, () => {
+    // Can't `abort()` here because it would break code that does runtime
+    // checks.  e.g. `if (typeof SDL === 'undefined')`.
+    var msg = `\`${sym}\` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line`;
+    // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE requires the name as it appears in
+    // library.js, which means $name for a JS name with no prefix, or name
+    // for a JS name like _name.
+    var librarySymbol = sym;
+    if (!librarySymbol.startsWith('_')) {
+      librarySymbol = '$' + sym;
+    }
+    msg += ` (e.g. -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='${librarySymbol}')`;
+    if (isExportedByForceFilesystem(sym)) {
+      msg += '. Alternatively, forcing filesystem support (-sFORCE_FILESYSTEM) can export this for you';
+    }
+    warnOnce(msg);
+  });
 
   // Any symbol that is not included from the JS library is also (by definition)
   // not exported on the Module object.
@@ -2807,46 +2851,9 @@ function checkUnflushedContent() {
 
 var wasmExports;
 
-// In modularize mode the generated code is within a factory function so we
-// can use await here (since it's not top-level-await).
-wasmExports = await createWasm();
-await run();
+// With async instantation wasmExports is assigned asynchronously when the
+// instance is received.
+createWasm().then(() => run());
 
 // end include: postamble.js
-
-// include: postamble_modularize.js
-// In MODULARIZE mode we wrap the generated code in a factory function
-// and return either the Module itself, or a promise of the module.
-
-// Assertion for attempting to access module properties on the incoming
-// moduleArg.  In the past we used this object as the prototype of the module
-// and assigned properties to it, but now we return a distinct object.  This
-// keeps the instance private until it is ready (i.e the promise has been
-// resolved).
-for (const prop of Object.keys(Module)) {
-  if (!(prop in moduleArg)) {
-    Object.defineProperty(moduleArg, prop, {
-      configurable: true,
-      get() {
-        abort(`Access to module property ('${prop}') is no longer possible via the module constructor argument; Instead, use the result of the module constructor.`)
-      }
-    });
-  }
-}
-// end include: postamble_modularize.js
-
-
-
-    return Module;
-  };
-})();
-
-// Export using a UMD style export, or ES6 exports if selected
-if (typeof exports === 'object' && typeof module === 'object') {
-  module.exports = Module;
-  // This default export looks redundant, but it allows TS to import this
-  // commonjs style module.
-  module.exports.default = Module;
-} else if (typeof define === 'function' && define['amd'])
-  define([], () => Module);
 
