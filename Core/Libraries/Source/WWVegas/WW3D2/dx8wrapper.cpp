@@ -80,6 +80,9 @@
 #include "wwprofile.h"
 #include "ffactory.h"
 #include "dx8caps.h"
+#ifdef USE_WEBGL
+#include "webgl_device.h"
+#endif
 #include "formconv.h"
 #include "dx8texman.h"
 #include "bound.h"
@@ -291,6 +294,23 @@ bool DX8Wrapper::Init(void * hwnd, bool lite)
 
 	Invalidate_Cached_Render_States();
 
+#ifdef USE_WEBGL
+	// ZH-WebGL-Port: DX8-Geraetekette durch WebGL2-Context ersetzen.
+	// Kein LoadLibrary/Direct3DCreate8/CreateDevice unter Emscripten.
+	if (!lite) {
+		// Canvas-ID kommt ueber _Hwnd (als String) oder Default "canvas".
+		const char* canvas_id = "canvas";
+		if (_Hwnd) {
+			// _Hwnd ist hier ein opaque Pointer; im WebGL-Build uebergeben wir
+			// ggf. einen String-Pointer. Default bleibt "canvas".
+		}
+		if (!WebGLDevice::Create_Context(canvas_id)) {
+			return false;
+		}
+		IsInitted = true;
+		WWDEBUG_SAY(("WebGL device init completed")));
+	}
+#else
 	if (!lite) {
 		D3D8Lib = LoadLibrary("D3D8.DLL");
 
@@ -322,6 +342,7 @@ bool DX8Wrapper::Init(void * hwnd, bool lite)
 		Enumerate_Devices();
 		WWDEBUG_SAY(("DX8Wrapper Init completed"));
 	}
+#endif  // USE_WEBGL
 
 	return(true);
 }
@@ -335,9 +356,13 @@ void DX8Wrapper::Shutdown()
 	}
 
 	if (D3DInterface) {
+#ifdef USE_WEBGL
+		WebGLDevice::Release_Context();
+		D3DInterface = nullptr;
+#else
 		D3DInterface->Release();
 		D3DInterface=nullptr;
-
+#endif
 	}
 
 	if (CurrentCaps)
@@ -1672,6 +1697,12 @@ void DX8Wrapper::End_Scene(bool flip_frames)
 
 	if (flip_frames) {
 		DX8_Assert();
+#ifdef USE_WEBGL
+		// ZH-WebGL-Port: Backbuffer-Praesentation erfolgt implizit durch Emscripten.
+		WebGLDevice::Present();
+		IsDeviceLost = false;
+		FrameCount++;
+#else
 		HRESULT hr;
 		{
 			WWPROFILE("DX8Device::Present()");
@@ -1708,6 +1739,7 @@ void DX8Wrapper::End_Scene(bool flip_frames)
 		else {
 			DX8_ErrorCode(hr);
 		}
+#endif  // USE_WEBGL
 	}
 
 	// Each frame, release all of the buffers and textures.

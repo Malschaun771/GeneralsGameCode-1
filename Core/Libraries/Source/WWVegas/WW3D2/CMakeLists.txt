@@ -234,17 +234,18 @@ set(WW3D2_SRC
 )
 
 # --- WebGL backend switch (ZH → WebGL/WASM port) ---
-# When USE_WEBGL is ON, replace the DX8 facade (dx8wrapper.cpp) with the
-# WebGLWrapper implementation. The 8 DX8 "bypass" files (dx8vertexbuffer,
-# dx8indexbuffer, dx8caps, dx8polygonrenderer, dx8renderer, dx8texman,
-# dx8webbrowser) still call DX8 directly and are excluded until they are
-# ported to WebGL (see WebGL_PORT_PLAN.md, tasks 12/13). This yields a
-# linkable WW3D2 core for the Emscripten build; full game rendering still
-# requires the remaining DX8 surfaces to be ported.
+# When USE_WEBGL is ON:
+#  - dx8wrapper.cpp is KEPT but compiled with USE_WEBGL defined; its DX8 device
+#    chain (LoadLibrary/Direct3DCreate8/CreateDevice/Present) is guarded by
+#    #ifdef USE_WEBGL and replaced with WebGLDevice (webgl_device.cpp).
+#  - the 8 DX8 "bypass" files (dx8vertexbuffer, dx8indexbuffer, dx8caps,
+#    dx8polygonrenderer, dx8renderer, dx8texman, dx8webbrowser) still call DX8
+#    directly and are excluded until ported (tasks 12/13).
+#  - webglwrapper.cpp (the DX8Wrapper-compatible facade) + webgl_device.cpp are
+#    added. This yields a linkable WW3D2 core for the Emscripten build.
 if (USE_WEBGL)
-    message(STATUS "WebGL port: USE_WEBGL=ON — replacing dx8wrapper with WebGLWrapper")
+    message(STATUS "WebGL port: USE_WEBGL=ON — dx8wrapper kept (GUARDED), WebGLDevice + WebGLWrapper added")
     list(REMOVE_ITEM WW3D2_SRC
-        dx8wrapper.cpp
         dx8vertexbuffer.cpp
         dx8indexbuffer.cpp
         dx8caps.cpp
@@ -255,6 +256,7 @@ if (USE_WEBGL)
     )
     list(APPEND WW3D2_SRC
         webglwrapper.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../WebGLWrapper/webgl_device.cpp
     )
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../WebGLWrapper)
 endif()
